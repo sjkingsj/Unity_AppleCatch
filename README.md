@@ -330,3 +330,426 @@ public class BasketController : MonoBehaviour
   - 아웃렛 접속을 사용.
     - (basket) -> (Apple SE 에 get_se), (Bomb SE 에 damage_se) 
 
+
+
+
+
+#### 8.6 사과와 폭탄 공장 만들기
+
+##### 8.6.1 프리팹 만들기
+
+- 사과와 폭탄을 일정 시간 간격으로 무작위 위치에 생성한다.
+- 사과와 폭탄의 프리팹 만들기
+  - (apple)을 Project 창으로 드래그&드롭 -> Original Prefab -> (applePrefab)
+  - Hierarchy 창의 (apple)은 제거
+  - (bomb)도 마찬가지로 (bombPrefab)의 프리팹 만들고 기존 오브젝트 제거
+
+
+
+##### 8.6.2 제너레이터 스크립트 작성하기
+
+- 사과가 1초 간격으로 떨어지는 것으로 구현
+
+  ```c#
+  // (ItemGenerator)
+  public class ItemGenerator : MonoBehaviour
+  {
+  	public GameObject applePrefab;
+  	public GameObject bombPrefab;
+      
+  	float span = 1.0f;  // 1초마다로 지정
+  	float delta = 0;  // 카운트 변수
+  
+      void Update()
+  	{
+   		this.delta += Time.deltaTime; // 프레임마다 흘러가는 시간
+   		if (this.delta > this.span)  // 프레임이 1초가 지나면
+   		{
+   			this.delta = 0;  // 카운트 초기화
+    			Instantiate(applePrefab);  // 사과 프리팹 만들기
+   		}
+  	}
+  }
+  ```
+
+  
+
+##### 8.6.3 빈 오브젝트에 제너레이터 스크립트 적용하기
+
+- Hierarchy 창 -> + -> Create Empty -> (ItemGenerator)
+- (ItemGenerator) 스크립트를 적용하기
+
+
+
+##### 8.6.4 제너레이터 스크립트로 프리팹 전달하기
+
+- (ItemGenerator)의 Inspector 창에서 (applePrefab), (bombPrefab) 적용
+
+
+
+##### 8.6.5 공장 업그레이드하기
+
+- 아이템이 떨어지는 위치를 무작위로 변경
+
+- 아홉 개로 분할한 구역 어딘가로 아이템을 떨어뜨릴 것이며 중앙은 원점, 좌우상하 구역의 중심은 +-1 이다.
+
+  ```c#
+  // (ItemGenerator 수정)
+  public class ItemGenerator : MonoBehaviour
+  {
+  	...
+  	void Update()
+  	{
+   		...
+   		if (this.delta > this.span)
+   		{
+    			...
+    			// 사과 프리팹 생성
+    			GameObject item = Instantiate(applePrefab) as GameObject;
+    			float x = Random.Range(-1, 2);
+    			float z = Random.Range(-1, 2); // 무작위의 x, z 좌표 생성
+    			item.transform.position = new Vector3(x, 4, z);  // 사과 프리팹 이동
+  		}
+      }
+  }
+  ```
+
+  
+
+- 랜덤 값
+  - x = Random.Range(a, b);  // a 이상, b 미만의 무작위의 정수 생성
+
+- 출현할 아이템을 무작위로 변경
+
+  - 사과 대신 일정 확률로 폭탄이 생성되도록 수정
+
+  ```c#
+  // (ItemGenerator 수정)
+  public class ItemGenerator : MonoBehaviour
+  {
+  	...
+  	int ratio = 2; // 폭탄이 생성될 확률 변수
+  
+      void Update()
+  	{
+  		...
+  		if (this.delta > this.span)
+   		{
+    			...
+    			GameObject item;
+    			int dice = Random.Range(1, 11); // 1 ~ 10의 확률 중
+    			if (dice <= this.ratio)  // 폭탄이 나올 확률이 걸리면
+    			{
+                  item = Instantiate(bombPrefab) as GameObject; // 폭탄 프리팹 생성
+              }  
+    			else  // 그 외에는
+    			{
+          	    item = Instantiate(applePrefab) as GameObject; // 사과 프리팹 생성
+          	}  
+    			...
+  		}
+      }
+  }
+  ```
+
+  
+
+- 매개변수를 외부에서 조절할 수 있도록 설정
+
+  - 생성 위치, 생성 속도, 아이템 종류 등을 변경하여 게임 난이도를 조절하기 위해 매개변수를 조절해 긴장감이 떨어지지 않도록 게임을 연출
+
+  ```c#
+  // (ItemGenerator 수정)
+  public class ItemGenerator : MonoBehaviour
+  {
+  	...
+  	float speed = -0.03f; // 아이템 낙하 속도 변수
+  	
+      // 매개변수를 일괄적으로 설정할 수 있는 매서드 정의
+      public void SetParameter(float span, float speed, int ratio)
+  	{
+   		this.span = span; // 아이템의 생성 간격
+   		this.speed = speed; // 아이템의 낙하 속도
+   		this.ratio = ratio; // 사과와 폭탄의 생성 비율
+  	}
+      
+  	void Update()
+  	{
+   		...
+   		if (this.delta > this.span)
+   		{
+    			...
+    			item.GetComponent<ItemGenerator>().dropSpeed = this.speed;
+    			// 아이템 낙하 속도 변수를 ItemController 내 정의한 변수에 대입
+  		}
+      }
+  }
+  ```
+
+
+
+- 소멸될 오브젝트에 효과음을 넣고 싶을 경우
+  - 사과나 폭탄에 AudioSource 컴포넌트를 적용하면 충돌한 순간 아이템이 소멸되므로 효과음을 내기 전에 아이템에 적용 된 AudioSource 컴포넌트 역시 소멸된다.
+  - 따라서 소멸되는 오브젝트에 적용된 스크립트에서 효과음을 내고 싶다면 
+  - AudioSource.PlayClipAtPoint(AudioClip clip, Vector3 pos) 매서드를 사용해야한다.
+  - 이 매서드는 음원과 소리를 내고 싶은 좌표를 지정하면 지정한 장소에서 새로운 게임 오브젝트를 생성하고 그곳에서 효과음을 재생한다.
+
+
+
+- 난수
+  - 컴퓨터로 다루는 난수는 진짜 난수가 아닌 의사 난수이기 때문에 패턴을 해석할 수 있다. 이러한 의사 난수라는 수열 패턴만 알면 다음에 나올 숫자를 알 수 있다. 이러한 생성을 막으려면 몇 번째 난수부터 사용할지 매번 바뀌도록 수열 패턴을 변경해야 한다. 이러한 값을 '난수의 시드'라고 한다.
+
+
+
+
+
+#### 8.7 UI 만들기
+
+##### 8.7.1 UI 배치하기
+
+- 제한 시간과 득점 표시 두 가지를 UI로 준비한다.
+  - 제한 시간 UI : 남아 있는 게임 시간을 카운트다운해 표시
+  - 득점 UI : 플레이어가 얻은 점수를 표시
+- 감독 스크립트 작성 : 제한 시간 UI
+  - Hierarchy 창 -> + -> UI -> Text -> (Time)
+  - (Time) -> 앵커 포인트 (오른쪽 위), Rect Transform의 Pos(-170, -70, 0), Width & Height (250, 100), Text(60), Font Size(84), Alignment(가로 오른쪽 정렬, 세로 중앙 정렬)
+- 감독 스크립트 작성 : 득점 UI
+  - 똑같이 (Point) 만들기
+  - (Point) -> 앵커 포인트 (오른쪽 위), Rect Transform의 Pos(-270, -180, 0), Width & Height (450, 100), Text(0 point), Font Size(84), Alignment(가로 오른쪽 정렬, 세로 중앙 정렬)
+
+
+
+##### 8.7.2 UI를 갱신하는 감독 만들기
+
+- 제한 시간과 득점을 관리하고 두 값이 갱신될 때 UI에 반영
+
+  1. 감독 스크립트 작성
+
+     - 제한 시간은 60초부터 카운트다운을 시작해 0초에 정지
+
+        -> 현재 시간에서 Time.deltaTime을 빼면 카운트다운을 구현할 수 있다.
+
+     ```c#
+     // (GameDirector)
+     using UnityEngine.UI;
+     
+     public class GameDirector : MonoBehaviour
+     {
+     	GameObject timerText; // Time을 대입할 수 있도록 변수 선언
+     	float time = 60.0f; // 남은 시간 time 변수를 60초로 초기화
+     
+         void Start()
+     	{
+             this.timerText = GameObject.Find("Time");
+         } // Time UI 대입
+         
+         void Update()
+     	{
+      		this.time -= Time.deltaTime; // 각 프레임 사이의 시간 차를 time 변수에서 빼기
+      		this.timerText.GetComponent<Text>().text = this.time.ToString("F1");
+      		// 나머지 시간을 문자열로 변환해 UI Text에 대입. 소수점 아래 첫째 자리까지 표시할 수 있도록 "F1" 서식 지정자를 지정
+     	}
+     }
+     ```
+
+     
+
+2. 빈 오브젝트 생성
+   - \+ -> Create Empty -> (GameDirector)
+
+3. 감독 스크립트 적용
+   - (GameDirector)에 스크립트 적용
+
+
+
+##### 8.7.3 감독에게 득점 관리시키기
+
+- 아이템이 바구니와 충돌할 때 득점 증감을 알리고 UI를 갱신
+
+  1. 감독으로 UI 갱신
+
+  ```c#
+  // (GameDirector 수정)
+  public class GameDirector : MonoBehaviour
+  {
+  	...
+  	GameObject pointText; // Point UI 대입할 수 있도록 pointText 변수 선언
+  	int point = 0; // 점수 point 변수 초기화
+  
+      public void GetApple() // 사과를 받았을 때 매서드
+  	{
+          this.point += 100;
+      }
+      
+  	public void GetBomb() // 폭탄을 받았을 때 매서드
+  	{
+          this.point /= 2;
+      }
+      
+  	void Start()
+  	{
+          ...
+   		this.pointText = GameObject.Find("Point"); // Point UI 대입
+      }
+  
+      void Update()
+  	{
+          ...
+   		this.pointText.GetComponent<Text>().text = this.point.ToString() + " point";
+          // 점수를 UI에 문자열로 변환해 표시
+  	}
+  }
+  ```
+
+  
+
+2. 바구니 컨트롤러에서 감독으로 득점 전달
+
+   ```c#
+   // (BasketController 수정)
+   public class BasketController : MonoBehaviour
+   {
+   	...
+   	GameObject director;
+   
+       void Start()
+   	{
+           ...
+    		this.director = GameObject.Find("GameDirector"); // 감독 오브젝트 검색
+   	}
+       
+   	void OnTriggerEnter(Collider other)
+   	{
+    		if (other.gameObject.tag == "Apple")
+    		{
+               ...
+     			this.director.GetComponent<GameDirector>().GetApple();
+           } // 감독 오브젝트의 GetApple 매서드 호출
+    		else
+    		{
+               ...
+     			this.director.GetComponent<GameDirector>().GetBomb();
+           } // 감독 오브젝트의 GetBomb 매서드 호출
+   		...
+   	}
+   }
+   ```
+
+   
+
+**[ 자신 이외의 오브젝트 컴포넌트에 접근하는 방법 ]**
+
+1. Find 매서드로 오브젝트를 찾는다.
+2. GetComponent 매서드로 오브젝트의 컴포넌트를 구한다.
+3. 컴포넌트를 가진 데이터에 접근한다.
+
+
+
+
+
+#### 8.8 레벨 디자인하기
+
+##### 8.8.1 게임 플레이하기
+
+- 제한 시간이 너무 길어 싫증 난다.
+- 게임이 단조로워서 단순 작업이 되기 쉽다.
+
+
+
+##### 8.8.2 제한 시간 조절하기
+
+- 제한 시간이 너무 짧으면 즐거움보다 압박감이 심해져 플레이해도 기분이 좋지 않다.
+
+  -> 30초 정도로 변경하기
+
+  ```c#
+  // (GameDirector 수정)
+  float time = 30.0f;
+  ```
+
+- 게임 진행에 따라 난이도에 변화를 주자
+
+
+
+##### 8.8.3 레벨 디자인
+
+- 난이도를 레벨이라고 하기도 하고 게임의 무대인 맵을 레벨이라고 하기도 한다.
+- 플레이어 능력과 도전 내용의 난이도가 균형을 이루고 있을 때 플로 상태 (몰입 상태). 이러한 상태로 향하는 행동을 재미있게 느껴진다.
+- 따라서 최적의 난이도로 설정하는 것이 중요하다.
+  - 난이도 곡선 : 시작할 때 도전할 내용을 이해하는 준비 운동 시간으로서 너무 어렵지 않도록 난이도를 낮게 설정하고, 중반에는 게임에 익숙해질 무렵이므로 난이도를 서서히 올린다. 이 단계의 끝에 오면 가장 어렵게 느끼도록 만들고, 후반에는 난이도를 조금 떨어뜨린다. 이것은 게임을 기분 좋게 마치도록 하는 배려이며, 끝까지 어려우면 게임을 마치고 났을 때 재미는 사라지고 피로만 남기 때문이다.
+
+
+
+##### 8.8.4 레벨 디자인 도전하기
+
+**난이도에 직결될 것 같은 매개변수**
+
+- 아이템 생성 속도
+
+- 아이템 낙하 속도
+
+- 사과와 폭탄 비율
+
+  - 난이도 곡선에 맞춰 게임 진행을 축으로 각 매개변수를 설정한다.
+
+  | 남은 시간 | 생성 속도 | 낙하 속도 | 폭탄 비율 |
+  | :-------: | :-------: | :-------: | :-------: |
+  |   30~20   |    1초    |   -0.03   |    20%    |
+  |   20~10   |   0.7초   |   -0.04   |    40%    |
+  |   10~5    |   0.4초   |   -0.06   |    60%    |
+  |    5~0    |   0.9초   |   -0.04   |    30%    |
+
+  ```c#
+  // (GameDirector 수정)
+  public class GameDirector : MonoBehaviour
+  {
+  	...
+  	GameObject generator;
+  	...
+  	void Start()
+  	{
+   		this.generator = GameObject.Find("ItemGenerator");
+   		...
+  	}
+  
+      void Update()
+  	{
+   		...
+   		if (this.time < 0)
+          {
+    			this.time = 0;
+    			this.generator.GetComponent<ItemGenerator>().SetParameter(10000.0f, 0, 0);
+   		} // 게임을 끝낸 후에는 아이템 생성을 중단시키기 위해 생성 시간에 큰 값 설정
+   		else if (0 <= this.time && this.time < 5)
+   		{
+              this.generator.GetComponent<ItemGenerator>().SetParameter(0.9f, -0.04f, 3);
+          }
+   		else if (5 <= this.time && this.time < 10)
+   		{
+              this.generator.GetComponent<ItemGenerator>().SetParameter(0.4f, -0.06f, 6);
+          }
+   		else if (10 <= this.time && this.time < 20)
+   		{
+              this.generator.GetComponent<ItemGenerator>().SetParameter(0.7f, -0.04f, 4);
+          }
+   		else if (20 <= this.time && this.time < 30)
+   		{
+              this.generator.GetComponent<ItemGenerator>().SetParameter(1.0f, -0.03f, 2); 
+          }
+   		...
+  	}
+  }
+  ```
+
+  
+
+##### 8.8.5 매개변수 조절하기
+
+- 직접 게임을 체험해보며 적절한 난이도로 매개변수를 조절해나간다.
+
+  | 남은 시간 | 생성 속도 | 낙하 속도 | 폭탄 비율 |
+  | :-------: | :-------: | :-------: | :-------: |
+  |   30~23   |    1초    |   -0.03   |    20%    |
+  |   23~12   |   0.8초   |   -0.04   |    40%    |
+  |   12~5    |   0.5초   |   -0.05   |    60%    |
+  |    5~0    |   0.7초   |   -0.04   |    30%    |
