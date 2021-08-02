@@ -1,3 +1,17 @@
+# 실행 화면
+![1](https://user-images.githubusercontent.com/87646938/127814770-ccaa7510-f241-4584-8cef-e28520a50644.jpg)
+ - 유니티 SCENE 화면
+
+![2](https://user-images.githubusercontent.com/87646938/127814856-b3b1bc9a-7ed7-491d-8f59-c46e9d01ca8c.jpg)
+ - 게임을 실행한 모습
+
+![3](https://user-images.githubusercontent.com/87646938/127814881-6037207f-ac80-48e7-9688-c9512a3cab98.jpg)
+ - 바구니를 옮겨 사과를 받거나 폭탄을 받는 모습
+
+<br>
+<br>
+<br>
+
 # WEEK6_Unity
 
 ## Ch.8 Level Design
